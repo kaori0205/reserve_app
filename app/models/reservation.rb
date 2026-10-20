@@ -19,6 +19,9 @@ class Reservation < ApplicationRecord
     validate :must_be_on_same_day
     validate :must_be_later_than_now, on: :create
 
+    scope :overlapping ->(start_at, end_at) {
+        where.not("start_at <= ? OR end_at >= ?", end_at, start_at)
+
     private
     # 予約の人数が部屋の定員を超えていないことを検証する
     def people_within_capacity
