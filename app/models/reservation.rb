@@ -19,10 +19,24 @@ class Reservation < ApplicationRecord
     validate :must_be_on_same_day
     validate :must_be_later_than_now, on: :create
 
-    scope :overlapping ->(start_at, end_at) {
-        where.not("start_at <= ? OR end_at >= ?", end_at, start_at)
+     # 予約の時間が重なるかどうかを判定するスコープ
+    scope :overlapping, ->(start_at, end_at) {where.not("start_at >= ? OR end_at <= ?", end_at, start_at)}
+   
+    validate :overlapping_is_not_allowed, if: :reserved?
 
     private
+
+    def overlapping_is_not_allowed
+        return if start_at.blank? || end_at.blank? || room.blank?
+        overlapping_reservations = Reservation.where(room: room)
+                                              .where.not(id: id)
+                                              .overlapping(start_at, end_at)
+                                              .where(status: :reserved)
+        if overlapping_reservations.exists?
+            errors.add(:base, "予約が重なっています")
+        end
+    end
+
     # 予約の人数が部屋の定員を超えていないことを検証する
     def people_within_capacity
         return if room.blank? || people.blank?

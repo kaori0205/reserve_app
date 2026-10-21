@@ -4,4 +4,38 @@ class Room < ApplicationRecord
     validates :price_per_30min, presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }   
 
     has_many :reservations, dependent: :destroy
+    
+    # available_between はクラスメソッドなので private の上に置くのが一般的です
+    def self.available_between(start_at, end_at, people: 1)
+        return if start_at.blank? || end_at.blank?
+        busy_rooms = Reservation.reserved.overlapping(start_at, end_at)
+        where(capacity: people..).where.not(id: busy_rooms.select(:room_id))
+    end
+
+    # free_slots はインスタンスメソッド（外から呼ぶので private の外に出す）
+    def free_slots(date)
+        return [] if date.blank?
+
+        start_time = date.in_time_zone.change(hour: 9)
+        end_time = date.in_time_zone.change(hour: 21)
+        slots = []
+        
+        current_time = start_time
+
+        while current_time < end_time
+            slot_end = current_time + 30.minutes
+
+            # 1. Room自身の reservations から、予約中で、かつその30分に重なるものがないか（none?）調べる
+            is_free = reservations.reserved.overlapping(current_time, slot_end).none?
+    
+            if is_free
+                slots << [current_time, slot_end]
+            end
+
+            # 2. 次の30分に進めるために slot_end を代入する
+            current_time = slot_end
+        end
+
+        slots
+    end
 end
