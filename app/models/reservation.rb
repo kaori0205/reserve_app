@@ -19,10 +19,43 @@ class Reservation < ApplicationRecord
     validate :must_be_on_same_day
     validate :must_be_later_than_now, on: :create
 
+    scope :on, ->(date) { where(start_at: date.all_day).order(:start_at) }
      # 予約の時間が重なるかどうかを判定するスコープ
     scope :overlapping, ->(start_at, end_at) {where.not("start_at >= ? OR end_at <= ?", end_at, start_at)}
    
     validate :overlapping_is_not_allowed, if: :reserved?
+
+    def price
+        total = 0
+        slot_start = start_at
+        
+        while slot_start < end_at
+          rate = 1
+
+          rate *=1.25 if slot_start.hour >= 18
+
+          rate *=1.5 if slot_start.saturday? || slot_start.sunday?
+
+          total += room.price_per_30min * rate
+
+          slot_start += 30.minutes
+        end
+
+        total.floor
+    end
+
+    def cancellable?
+        reserved? && Time.current.to_date < start_at.to_date
+    end
+
+    def cancel!
+        unless cancellable?
+            errors.add(:base, "予約当日はキャンセルできません")
+            return false
+        end
+        update!(status: :cancelled)
+        true
+    end
 
     private
 

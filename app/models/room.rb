@@ -5,6 +5,18 @@ class Room < ApplicationRecord
 
     has_many :reservations, dependent: :destroy
     
+    def occupancy_rate(year, month)
+        first_day = Date.new(year, month, 1)
+        
+        total_minutes = reservations.reserved.where(start_at: first_day.in_time_zone.all_month) 
+          sum = [end_at - start_at.all_month]
+          occupancy_rate = sum/.end_of_month*720*100
+
+          occupancy rate
+        else 0.0
+        end
+    end
+
     # available_between はクラスメソッドなので private の上に置くのが一般的です
     def self.available_between(start_at, end_at, people: 1)
         return if start_at.blank? || end_at.blank?
