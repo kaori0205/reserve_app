@@ -14,6 +14,18 @@ Rails.application.routes.draw do
   root "homes#top"
 
   namespace :api do
-     get 'hello', to: 'hello#show'
- end
+    #体験用
+    get 'hello', to: 'hello#show'
+
+    #本番用
+    resources :rooms, only: [:index] do
+      get :availability, on: :member
+    end
+
+    resources :reservations, only: [:create, :destroy]
+    
+    resources :users, only: [] do
+      resources :reservations, only: [:index], controller: 'user_reservations'
+    end
+  end
 end
